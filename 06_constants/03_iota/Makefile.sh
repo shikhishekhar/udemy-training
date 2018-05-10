@@ -3,8 +3,87 @@
 # This is a script that encapsulated the "make clean" funcationality so
 # that our build process can be cross platform. 
 
-# Map the command to a variable
-CMD=$1
+CMD=""
+SERVER_PORT=""
+MONGO_URL=""
+MONGO_DIAL_TIMEOUT=""
+MONGO_DB_NAME=""
+MONGO_USERNAME=""
+MONGO_PASSWORD=""
+SPLITPEA_EUUID=""
+SPLITPEA_USERNAME=""
+SPLITPEA_PASSWORD=""
+SPLITPEA_DECRYPT=""
+SWAGGER_ENDPOINT=""
+PUBLIC_DIR=""
+LOG_LEVEL=""
+MONGO_KEY1=""
+MONGO_KEY2=""
+MONGO_SECRET_PATH=""
+SPLITPEA_SECRET_PATH=""
+
+envKeys=(SERVER_PORT MONGO_URL MONGO_DIAL_TIMEOUT MONGO_DB_NAME MONGO_USERNAME MONGO_PASSWORD SPLITPEA_EUUID SPLITPEA_USERNAME SPLITPEA_PASSWORD
+			SPLITPEA_DECRYPT SWAGGER_ENDPOINT PUBLIC_DIR LOG_LEVEL MONGO_KEY1 MONGO_KEY2 MONGO_SECRET_PATH SPLITPEA_SECRET_PATH)
+
+# Paremeters
+runGoCommand() {
+	if [ "$CMD" == "clean" ]; then 
+		go clean -x
+		rm -rf dist/
+		rm -rf vendor/
+	elif [ "$CMD" == "dist" ]; then 
+		makeDist
+	elif [ "$CMD" == "deps" ]; then 
+		makeDeps
+	elif [ "$CMD" == "test" ]; then 
+		makeDeps
+		go test -v ./... 
+	elif [ "$CMD" == "server" ]; then 
+		makeDeps
+		makeDist
+		go build -v -o ${DIST_DIR}/${BINARY} -ldflags=$LINKER_FLAGS
+	elif [ "$CMD" == "start" ]; then 
+		$DIST_DIR/$BINARY
+	elif [ "$CMD" == "swagger" ]; then 
+		echo "Make $CMD"
+	elif [ "$CMD" == "verify-template" ]; then 
+		makeVerifyTemplate
+	else 
+		echo "Command \"$CMD\" not supported"
+		echo "Possible Commands are as follows:"
+		echo "clean"
+		echo "deps"
+		echo "dist"
+		echo "server"
+		echo "start"
+		echo "swagger"
+		echo "test"
+		echo "verify-template"
+	fi
+}
+		
+for arg in "$@"
+do
+	if [[ "$arg" = *"="* ]]; then
+		keyFromArgument="$(cut -d'=' -f1 <<<"$arg")"
+		keyfound="false"
+		
+		for key in ${envKeys[@]}; do
+			if [ "$key" == "$keyFromArgument" ]; then 
+				echo "Found the Key"
+				export $arg
+				keyfound="true"
+			fi
+		done
+		
+		if [ "$keyfound" == "false" ]; then 
+			echo "Invalid key entered - $keyFromArgument"
+		fi	
+	else 
+		CMD="$arg"
+		runGoCommand
+	fi
+done
 
 # Directory Structure Variables
 PROJECT_NAME="p2p-api-1"
@@ -66,38 +145,3 @@ makeVerifyTemplate() {
 	popd > /dev/null 2>&1
 }
 
-# Paremeters
-
-if [ "$CMD" == "clean" ]; then 
-    go clean -x
-    rm -rf dist/
-    rm -rf vendor/
-elif [ "$CMD" == "dist" ]; then 
-    makeDist
-elif [ "$CMD" == "deps" ]; then 
-    makeDeps
-elif [ "$CMD" == "test" ]; then 
-    makeDeps
-	go test -v ./... 
-elif [ "$CMD" == "server" ]; then 
-    makeDeps
-    makeDist
-	go build -v -o ${DIST_DIR}/${BINARY} -ldflags=$LINKER_FLAGS
-elif [ "$CMD" == "start" ]; then 
-	$DIST_DIR/$BINARY
-elif [ "$CMD" == "swagger" ]; then 
-    echo "Make $CMD"
-elif [ "$CMD" == "verify-template" ]; then 
-    makeVerifyTemplate
-else 
-    echo "Command \"$CMD\" not supported"
-    echo "Possible Commands are as follows:"
-    echo "clean"
-    echo "deps"
-    echo "dist"
-    echo "server"
-    echo "start"
-    echo "swagger"
-    echo "test"
-    echo "verify-template"
-fi
